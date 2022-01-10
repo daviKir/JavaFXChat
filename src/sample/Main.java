@@ -9,11 +9,19 @@ import javafx.stage.Stage;
 public class Main extends Application {
 
     @Override
-    public void start(Stage primaryStage) throws Exception{
-        Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
-        primaryStage.setTitle("Hello World");
-        primaryStage.setScene(new Scene(root, 300, 275));
-        primaryStage.show();
+    public void start(Stage stage) throws Exception{
+        FXMLLoader fxmlLoader = new FXMLLoader();
+        fxmlLoader.setLocation(getClass().getResource("sample.fxml"));
+        Parent load = fxmlLoader.load();
+        Scene scene = new Scene(load);
+
+        stage.setTitle("JavaFX chat");
+        stage.setScene(scene);
+
+        Controller controller = fxmlLoader.getController();
+        controller.userList.getItems().addAll("user1", "user2");
+
+        stage.show();
     }
 
 
