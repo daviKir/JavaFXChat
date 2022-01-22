@@ -9,11 +9,14 @@ public class ClientHandler {
 
     public static final String AUTH_OK = "/authOk";
     public static final String AUTH_COMMAND = "/auth";
+    public static final String PRIVATE_COMMAND = "/w";
     public static final String SEPARATOR = " ";
+
     private final MyServer server;
     private final Socket clientSocket;
     private DataInputStream inputStream;
     private DataOutputStream outputStream;
+    private String userName;
 
     public ClientHandler(MyServer myServer, Socket clientSocket) {
         this.server = myServer;
@@ -57,6 +60,7 @@ public class ClientHandler {
                 } else {
                     sendMessage(String.format("%s %s", AUTH_OK, userName));
                     server.subscribe(this);
+                    this.userName = userName;
                     return;
                 }
             }
@@ -69,14 +73,16 @@ public class ClientHandler {
             System.out.println("message = " + message);
             if (message.startsWith("/end")) {
                 return;
+            } else if (message.startsWith(PRIVATE_COMMAND)) {
+                processMessage(message, true);
             } else {
-                processMessage(message);
+                processMessage(message, false);
             }
         }
     }
 
-    private void processMessage(String message) throws IOException {
-        this.server.broadcastMessage(message, this);
+    private void processMessage(String message, boolean isPrivet) throws IOException {
+        this.server.broadcastMessage(message, this, isPrivet);
     }
 
     public void sendMessage(String message) throws IOException {
@@ -86,5 +92,9 @@ public class ClientHandler {
     private void closeConnection() throws IOException {
         server.unsubscribe(this);
         clientSocket.close();
+    }
+
+    public String getUserName() {
+        return userName;
     }
 }

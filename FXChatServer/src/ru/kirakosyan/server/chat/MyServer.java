@@ -10,6 +10,8 @@ import java.util.List;
 
 public class MyServer {
 
+    public static final String SEPARATOR = " ";
+
     private final List<ClientHandler> clients = new ArrayList<>();
     private AuthService authService;
 
@@ -35,10 +37,18 @@ public class MyServer {
         clientHandler.handle();
     }
 
-    public void broadcastMessage(String message, ClientHandler sender) throws IOException {
+    public void broadcastMessage(String message, ClientHandler sender, boolean isPrivet) throws IOException {
         for (ClientHandler client : clients) {
             if (client != sender) {
-                client.sendMessage(message);
+                if (isPrivet) {
+                    String[] parts = message.split(SEPARATOR);
+                    String userName = parts[1];
+                    if (client.getUserName().equals(userName)) {
+                        client.sendMessage(message);
+                    }
+                } else {
+                    client.sendMessage(message);
+                }
             }
         }
     }
