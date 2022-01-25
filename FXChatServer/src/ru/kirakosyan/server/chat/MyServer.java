@@ -1,5 +1,7 @@
 package ru.kirakosyan.server.chat;
 
+import org.omg.CORBA.TIMEOUT;
+import ru.kirakosyan.clientserver.Command;
 import ru.kirakosyan.server.chat.auth.AuthService;
 
 import java.io.IOException;
@@ -9,8 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MyServer {
-
-    public static final String SEPARATOR = " ";
 
     private final List<ClientHandler> clients = new ArrayList<>();
     private AuthService authService;
@@ -37,28 +37,51 @@ public class MyServer {
         clientHandler.handle();
     }
 
-    public void broadcastMessage(String message, ClientHandler sender, boolean isPrivet) throws IOException {
+    public synchronized void broadcastMessage(String message, ClientHandler sender) throws IOException {
         for (ClientHandler client : clients) {
             if (client != sender) {
-                if (isPrivet) {
-                    String[] parts = message.split(SEPARATOR);
-                    String userName = parts[1];
-                    if (client.getUserName().equals(userName)) {
-                        client.sendMessage(message);
-                    }
-                } else {
-                    client.sendMessage(message);
-                }
+                client.sendCommand(Command.clientMessageCommand(sender.getUserName(), message));
             }
         }
     }
 
-    public void subscribe(ClientHandler clientHandler) {
-        this.clients.add(clientHandler);
+    public synchronized void sendPrivateMessage(ClientHandler sender, String recipient, String privateMessage) throws IOException {
+        for (ClientHandler client : clients) {
+            if (client != sender && client.getUserName().equals(recipient)) {
+                client.sendCommand(Command.privateMessageCommand(sender.getUserName(), privateMessage));
+            }
+        }
     }
 
-    public void unsubscribe(ClientHandler clientHandler) {
+    public synchronized boolean isUsernameBusy(String username) {
+        for (ClientHandler client : clients) {
+            if (client.getUserName().equals(username)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public synchronized void subscribe(ClientHandler clientHandler) throws IOException {
+        this.clients.add(clientHandler);
+        notifyClientUserListUpdated();
+    }
+
+    public synchronized void unsubscribe(ClientHandler clientHandler) throws IOException {
         this.clients.remove(clientHandler);
+        notifyClientUserListUpdated();
+    }
+
+    private void notifyClientUserListUpdated() throws IOException {
+        List<String> userListOnline = new ArrayList<>();
+        for (ClientHandler client : clients) {
+            userListOnline.add(client.getUserName());
+        }
+
+        for (ClientHandler client : clients) {
+            client.sendCommand(Command.updateUserListCommand(userListOnline));
+        }
     }
 
     public AuthService getAuthService() {
