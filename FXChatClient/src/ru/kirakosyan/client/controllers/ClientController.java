@@ -20,6 +20,8 @@ public class ClientController {
     @FXML private Button sendButton;
     @FXML public ListView<String> userList;
 
+    public static final String PRIVATE_COMMAND = "/w";
+
     private ClientChat application;
 
     public void sendMessage() {
@@ -37,13 +39,17 @@ public class ClientController {
         }
 
         try {
-            message = sender != null ? String.join(": ", sender, message) : message;
-            Network.getInstance().sendMessage(message);
+            String newMessage = sender != null ? String.format("%s %s %s", PRIVATE_COMMAND, sender, message) : message;
+            Network.getInstance().sendMessage(newMessage);
         } catch (IOException e) {
             application.showErrorDialog("Ошибка передачи данных по сети");
         }
 
-        appendMessageToChat("Я", message);
+        if (sender != null) {
+            appendMessageToChat("Я", String.format(" -> %s%n%s", sender, message));
+        } else {
+            appendMessageToChat("Я", message);
+        }
     }
 
     private void appendMessageToChat(String sender,  String message) {
@@ -67,6 +73,16 @@ public class ClientController {
     }
 
     public void initializeMessageHandler() {
-        Network.getInstance().waitMessages(message -> Platform.runLater(() -> appendMessageToChat("server", message)));
+        Network.getInstance().waitMessages(message -> Platform.runLater(() -> {
+            if (message.startsWith(PRIVATE_COMMAND)) {
+                String[] parts = message.split(" ");
+                String[] messageArr = new String[parts.length - 2];
+                System.arraycopy(parts, 2, messageArr, 0, parts.length - 2);
+
+                appendMessageToChat("server", String.join(" ", messageArr));
+            } else {
+                appendMessageToChat("server", message);
+            }
+        }));
     }
 }
