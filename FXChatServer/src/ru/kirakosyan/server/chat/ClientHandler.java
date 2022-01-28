@@ -1,22 +1,26 @@
 package ru.kirakosyan.server.chat;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import ru.kirakosyan.clientserver.Command;
+import ru.kirakosyan.clientserver.CommandType;
+import ru.kirakosyan.clientserver.commands.AuthCommandData;
+import ru.kirakosyan.clientserver.commands.PrivateMessageCommandData;
+import ru.kirakosyan.clientserver.commands.PublicMessageCommandData;
+
+import java.io.*;
 import java.net.Socket;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class ClientHandler {
 
-    public static final String AUTH_OK = "/authOk";
-    public static final String AUTH_COMMAND = "/auth";
-    public static final String PRIVATE_COMMAND = "/w";
-    public static final String SEPARATOR = " ";
+    private static final int TIME_OUT = 120;
 
     private final MyServer server;
     private final Socket clientSocket;
-    private DataInputStream inputStream;
-    private DataOutputStream outputStream;
+    private ObjectInputStream inputStream;
+    private ObjectOutputStream outputStream;
     private String userName;
+    private int curTime = TIME_OUT;
 
     public ClientHandler(MyServer myServer, Socket clientSocket) {
         this.server = myServer;
@@ -24,12 +28,13 @@ public class ClientHandler {
     }
 
     public void handle() throws IOException {
-        inputStream = new DataInputStream(clientSocket.getInputStream());
-        outputStream = new DataOutputStream(clientSocket.getOutputStream());
+        inputStream = new ObjectInputStream(clientSocket.getInputStream());
+        outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
 
         new Thread(()-> {
             try {
-                authenticate();
+                Timer timer = waitConnection();
+                authenticate(timer);
                 readMessages();
             } catch (IOException e) {
                 System.err.println("Failed to process message from client ");
@@ -45,48 +50,101 @@ public class ClientHandler {
         }).start();
     }
 
-    private void authenticate() throws IOException {
+    private Timer waitConnection() {
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            public void run() {
+                curTime--;
+                System.out.println(curTime);
+                if (curTime <= 0) {
+                    try {
+                        sendCommand(Command.endCommand(408, "Истекло время ожидания"));
+                    } catch (IOException e) {
+                        System.err.println("Failed to process message from client");
+                        e.printStackTrace();
+                    }
+                    timer.cancel();
+                }
+            }
+        }, 0, 1000);
+        return timer;
+    }
+
+    private void authenticate(Timer timer) throws IOException {
         while (true) {
-            String message = inputStream.readUTF();
-            if (message.startsWith(AUTH_COMMAND)){
-                String[] parts = message.split(SEPARATOR);
-                String login = parts[1];
-                String password = parts[2];
+            Command command = readCommand();
+            if (command == null) {
+                continue;
+            }
+
+            if (command.getType() == CommandType.AUTH){
+                AuthCommandData data = (AuthCommandData) command.getData();
+                String login = data.getLogin();
+                String password = data.getPassword();
 
                 String userName = server.getAuthService().getUserNameByLoginAndPassword(login, password);
 
                 if (userName == null) {
-                    sendMessage("Не корректный логин и пароль");
+                    sendCommand(Command.errorCommand("Не корректный логин и пароль"));
+                } else if (server.isUsernameBusy(userName)) {
+                    sendCommand(Command.errorCommand("Такой пользователь уже существует"));
                 } else {
-                    sendMessage(String.format("%s %s", AUTH_OK, userName));
-                    server.subscribe(this);
+                    timer.cancel();
                     this.userName = userName;
+                    sendCommand(Command.authOkCommand(userName));
+                    server.subscribe(this);
                     return;
+                }
+                curTime = TIME_OUT;
+            }
+        }
+    }
+
+    public void sendCommand(Command command) throws IOException {
+        outputStream.writeObject(command);
+    }
+
+    private Command readCommand() throws IOException {
+        Command command = null;
+        try {
+            command = (Command) inputStream.readObject();
+        } catch (ClassNotFoundException e) {
+            System.err.println("Failed ro read command class");
+            e.printStackTrace();
+        }
+
+        return command;
+    }
+
+    private void readMessages() throws IOException {
+        while (true){
+            Command command = readCommand();
+
+            if (command == null) {
+                continue;
+            }
+
+            switch (command.getType()) {
+                case END: {
+                    return;
+                }
+                case PRIVATE_MESSAGE: {
+                    PrivateMessageCommandData data = (PrivateMessageCommandData) command.getData();
+                    String recipient = data.getReceiver();
+                    String privateMessage = data.getMessage();
+                    server.sendPrivateMessage(this, recipient, privateMessage);
+                    break;
+                }
+                case PUBLIC_MESSAGE: {
+                    PublicMessageCommandData data = (PublicMessageCommandData) command.getData();
+                    processMessage(data.getMessage());
                 }
             }
         }
     }
 
-    private void readMessages() throws IOException {
-        while (true){
-            String message = inputStream.readUTF().trim();
-            System.out.println("message = " + message);
-            if (message.startsWith("/end")) {
-                return;
-            } else if (message.startsWith(PRIVATE_COMMAND)) {
-                processMessage(message, true);
-            } else {
-                processMessage(message, false);
-            }
-        }
-    }
-
-    private void processMessage(String message, boolean isPrivet) throws IOException {
-        this.server.broadcastMessage(message, this, isPrivet);
-    }
-
-    public void sendMessage(String message) throws IOException {
-        this.outputStream.writeUTF(message);
+    private void processMessage(String message) throws IOException {
+        this.server.broadcastMessage(message, this);
     }
 
     private void closeConnection() throws IOException {
