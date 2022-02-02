@@ -5,7 +5,7 @@ import java.util.Objects;
 public class User {
     private final String login;
     private final String password;
-    private final String userName;
+    private String userName;
 
     public User(String login, String password, String userName) {
         this.login = login;
@@ -40,5 +40,9 @@ public class User {
     @Override
     public int hashCode() {
         return Objects.hash(login, password);
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 }
