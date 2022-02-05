@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import ru.kirakosyan.client.ClientChat;
 import ru.kirakosyan.client.models.Network;
+import ru.kirakosyan.client.service.ChatHistory;
 import ru.kirakosyan.clientserver.commands.ClientMessageCommandData;
 import ru.kirakosyan.clientserver.commands.PrivateMessageCommandData;
 import ru.kirakosyan.clientserver.commands.UpdateUserListCommandData;
@@ -19,12 +20,19 @@ import java.util.Optional;
 
 public class ClientController {
 
+    public static final int LAST_HISTORY_ROWS = 100;
     @FXML private TextArea textArea;
     @FXML private TextField textField;
     @FXML private Button sendButton;
     @FXML public ListView<String> userList;
 
     private ClientChat application;
+    private ChatHistory chatHistoryService;
+
+    public void createChatHistory() {
+        this.chatHistoryService = new ChatHistory(Network.getInstance().getCurrentUsername());
+        this.chatHistoryService.init();
+    }
 
     public void sendMessage() {
 
@@ -56,6 +64,7 @@ public class ClientController {
     }
 
     private void appendMessageToChat(String sender,  String message) {
+        String currentText = textArea.getText();
         textArea.appendText(DateFormat.getDateTimeInstance().format(new Date()));
         textArea.appendText(System.lineSeparator());
 
@@ -69,6 +78,9 @@ public class ClientController {
         textArea.appendText(System.lineSeparator());
         textField.setFocusTraversable(true);
         textField.clear();
+
+        String newMessage = textArea.getText(currentText.length(), textArea.getLength());
+        chatHistoryService.appendText(newMessage);
     }
 
     public void setApplication(ClientChat application) {
@@ -77,6 +89,10 @@ public class ClientController {
 
     public void initializeMessageHandler() {
         Network.getInstance().addReadMessageListener(command -> {
+            if (chatHistoryService == null) {
+                createChatHistory();
+                loadChatHistory();
+            }
             switch (command.getType()) {
                 case CLIENT_MESSAGE: {
                     ClientMessageCommandData data = (ClientMessageCommandData) command.getData();
@@ -97,6 +113,7 @@ public class ClientController {
     }
 
     public void closeChat(ActionEvent actionEvent) {
+        chatHistoryService.close();
         ClientChat.INSTANCE.getChatStage().close();
     }
 
@@ -120,5 +137,11 @@ public class ClientController {
 
     public void about(ActionEvent actionEvent) {
         Dialog.AboutDialog.INFO.show();
+    }
+
+    private void loadChatHistory() {
+        String rows = chatHistoryService.loadLastRows(LAST_HISTORY_ROWS);
+        textArea.clear();
+        textArea.setText(rows);
     }
 }

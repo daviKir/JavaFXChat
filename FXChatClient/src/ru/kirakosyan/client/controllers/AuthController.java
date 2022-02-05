@@ -59,6 +59,7 @@ public class AuthController {
                 if (command.getType() == CommandType.AUTH_OK) {
                     AuthOkCommandData data = (AuthOkCommandData) command.getData();
                     String userName = data.getUsername();
+                    Network.getInstance().setCurrentUsername(userName);
                     Platform.runLater(() -> ClientChat.INSTANCE.switchToMainChatWindow(userName));
                 } else if (command.getType() == CommandType.ERROR) {
                     ErrorCommandData data = (ErrorCommandData) command.getData();
