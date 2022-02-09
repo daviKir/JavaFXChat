@@ -5,6 +5,7 @@ import ru.kirakosyan.clientserver.CommandType;
 import ru.kirakosyan.clientserver.commands.AuthCommandData;
 import ru.kirakosyan.clientserver.commands.PrivateMessageCommandData;
 import ru.kirakosyan.clientserver.commands.PublicMessageCommandData;
+import ru.kirakosyan.clientserver.commands.UpdateUsernameCommandData;
 
 import java.io.*;
 import java.net.Socket;
@@ -138,6 +139,15 @@ public class ClientHandler {
                 case PUBLIC_MESSAGE: {
                     PublicMessageCommandData data = (PublicMessageCommandData) command.getData();
                     processMessage(data.getMessage());
+                    break;
+                }
+                case UPDATE_USERNAME: {
+                    UpdateUsernameCommandData data = (UpdateUsernameCommandData) command.getData();
+                    String newUsername = data.getUsername();
+                    server.getAuthService().updateUsername(userName, newUsername);
+                    userName = newUsername;
+                    server.notifyClientUserListUpdated();
+                    break;
                 }
             }
         }

@@ -2,20 +2,20 @@ package ru.kirakosyan.client.controllers;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import ru.kirakosyan.client.ClientChat;
 import ru.kirakosyan.client.models.Network;
 import ru.kirakosyan.clientserver.commands.ClientMessageCommandData;
 import ru.kirakosyan.clientserver.commands.PrivateMessageCommandData;
 import ru.kirakosyan.clientserver.commands.UpdateUserListCommandData;
+import ru.kirakosyan.client.dialogs.Dialog;
 
 import java.io.IOException;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.Optional;
 
 public class ClientController {
 
@@ -48,6 +48,7 @@ public class ClientController {
             }
 
         } catch (IOException e) {
+            e.printStackTrace();
             application.showErrorDialog("Ошибка передачи данных по сети");
         }
 
@@ -93,5 +94,31 @@ public class ClientController {
                 }
             }
         });
+    }
+
+    public void closeChat(ActionEvent actionEvent) {
+        ClientChat.INSTANCE.getChatStage().close();
+    }
+
+    public void changeUserName(ActionEvent actionEvent) {
+        TextInputDialog editDialog = new TextInputDialog();
+        editDialog.setTitle("Изменить юзернейм");
+        editDialog.setHeaderText("Введите новый юзернейм");
+        editDialog.setContentText("Username:");
+
+        Optional<String> result = editDialog.showAndWait();
+        if (result.isPresent()) {
+            try {
+                Network.getInstance().changeUsername(result.get());
+            } catch (IOException e) {
+                e.printStackTrace();
+                Dialog.NetworkError.SEND_MESSAGE.show();
+            }
+
+        }
+    }
+
+    public void about(ActionEvent actionEvent) {
+        Dialog.AboutDialog.INFO.show();
     }
 }

@@ -41,6 +41,23 @@ public class Dialog {
         }
     }
 
+    public enum AboutDialog {
+        INFO(String.format("Создатель чата: %s %n Используемые технологии: %s", "Киракосян Давид", "Java 8, JavaFX, Maven"));
+
+        private final String message;
+        private static final String TITLE = "Информация о программе";
+        private static final String TYPE = "Онлайн чат для локального обмена сообщениями";
+
+        AboutDialog(String message) {
+            this.message = message;
+        }
+
+        public void show() {
+            showDialog(Alert.AlertType.INFORMATION, TITLE, TYPE, message);
+        }
+
+    }
+
     private static void showDialog(Alert.AlertType dialogType, String title, String type, String message) {
         Alert alert = new Alert(dialogType);
         alert.initOwner(ClientChat.INSTANCE.getChatStage());
