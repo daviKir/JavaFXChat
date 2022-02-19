@@ -32,7 +32,7 @@ public class ClientHandler {
         inputStream = new ObjectInputStream(clientSocket.getInputStream());
         outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
 
-        new Thread(()-> {
+        server.getExecutorService().execute(()-> {
             try {
                 Timer timer = waitConnection();
                 authenticate(timer);
@@ -48,7 +48,7 @@ public class ClientHandler {
                     e.printStackTrace();
                 }
             }
-        }).start();
+        });
     }
 
     private Timer waitConnection() {
