@@ -1,5 +1,7 @@
 package ru.kirakosyan.server.chat;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import ru.kirakosyan.clientserver.Command;
 import ru.kirakosyan.clientserver.CommandType;
 import ru.kirakosyan.clientserver.commands.AuthCommandData;
@@ -13,6 +15,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class ClientHandler {
+
+    private final static Logger LOGGER = LogManager.getLogger(MyServer.class);
 
     private static final int TIME_OUT = 120;
 
@@ -38,13 +42,13 @@ public class ClientHandler {
                 authenticate(timer);
                 readMessages();
             } catch (IOException e) {
-                System.err.println("Failed to process message from client ");
+                LOGGER.error("Failed to process message from client ");
                 e.printStackTrace();
             } finally {
                 try {
                     closeConnection();
                 } catch (IOException e) {
-                    System.err.println("Failed to close connection");
+                    LOGGER.error("Failed to close connection");
                     e.printStackTrace();
                 }
             }
@@ -56,12 +60,11 @@ public class ClientHandler {
         timer.scheduleAtFixedRate(new TimerTask() {
             public void run() {
                 curTime--;
-                System.out.println(curTime);
                 if (curTime <= 0) {
                     try {
                         sendCommand(Command.endCommand(408, "Истекло время ожидания"));
                     } catch (IOException e) {
-                        System.err.println("Failed to process message from client");
+                        LOGGER.error("Failed to process message from client");
                         e.printStackTrace();
                     }
                     timer.cancel();
@@ -110,7 +113,7 @@ public class ClientHandler {
         try {
             command = (Command) inputStream.readObject();
         } catch (ClassNotFoundException e) {
-            System.err.println("Failed ro read command class");
+            LOGGER.error("Failed ro read command class");
             e.printStackTrace();
         }
 

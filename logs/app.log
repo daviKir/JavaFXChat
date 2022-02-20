@@ -1,0 +1,4 @@
+$d{yyyy-MM-dd HH:mm:ss.SSS} [main] INFO  ru.kirakosyan.server.chat.MyServer - Server has been started
+$d{yyyy-MM-dd HH:mm:ss.SSS} [main] INFO  ru.kirakosyan.server.chat.auth.PersistentDbAuthService - Creating DB connection...
+$d{yyyy-MM-dd HH:mm:ss.SSS} [main] INFO  ru.kirakosyan.server.chat.auth.PersistentDbAuthService - DB connection is created successfully
+$d{yyyy-MM-dd HH:mm:ss.SSS} [main] INFO  ru.kirakosyan.server.chat.MyServer - Waiting for new client connections
